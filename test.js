@@ -1,4 +1,6 @@
 const { add, subtract } = require('./index');
+const ver = parseInt(process.version.split('.')[0].substring(1));
+assert('Node version >= 20', ver >= 20 ? 'yes' : 'no', 'yes');
 
 let passed = 0, failed = 0;
 function assert(name, actual, expected) {
