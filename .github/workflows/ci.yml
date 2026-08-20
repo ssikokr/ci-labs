@@ -1,57 +1,58 @@
-name: Node.js CI
+name: Multi-Job CI
 
 on:
   push:
     branches: [main]
-    paths:
-      - '*.js'              # Only trigger when JavaScript files change
-      - 'package.json'
   pull_request:
     branches: [main]
-  workflow_dispatch:         # Adds a manual "Run workflow" button
-    inputs:
-      log_level:
-        description: 'Log verbosity'
-        required: false
-        default: 'info'
-        type: choice
-        options:
-          - info
-          - debug
-          - warn
-          
+  workflow_dispatch:
+
 jobs:
-  build-and-test:
+  lint:
+    name: Lint Code
     runs-on: ubuntu-latest
     steps:
-      # Step 1: Check out the source code
-      # GitHub Actions does NOT do this automatically — you must include this!
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - run: echo "Checking code style..."
+      - run: echo "Lint passed!"
 
-      # Step 2: Install Node.js on the runner
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - run: npm test
 
-      # Step 3: Run the tests
-      - name: Run tests
-        run: npm test
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Scanning for vulnerabilities..."
+      - run: echo "No vulnerabilities found!"
 
-      # Step 4: Build the application
-      - name: Build
-        run: npm run build
-
-      # Step 5: Upload the build output so it can be downloaded later
-      - name: Upload build artifact
-        if: always()
-        uses: actions/upload-artifact@v4
+  build:
+    name: Build Application
+    runs-on: ubuntu-latest
+    needs: [lint, test, security-scan]   # Waits for ALL three to pass
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
         with:
           name: app-build
           path: dist/
-          retention-days: 7
-      - name: Count lines of code
-        run: find . -name '*.js' | xargs wc -l
-      - name: Show log level
-        run: echo "Log level is ${{ inputs.log_level || 'not set' }}"
+
+  notify:
+    name: Send Notification
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: github.ref == 'refs/heads/main'   # Only notify on main branch
+    steps:
+      - run: echo "Build succeeded on main! Would send a Slack/email notification here."
