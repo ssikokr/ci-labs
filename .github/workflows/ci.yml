@@ -3,8 +3,22 @@ name: Node.js CI
 on:
   push:
     branches: [main]
+    paths:
+      - '*.js'          # Only trigger when JavaScript files change
+      - 'package.json'
   pull_request:
     branches: [main]
+  workflow_dispatch:      # Adds a manual "Run workflow" button
+    inputs:
+      log_level:
+        description: 'Log verbosity'
+        required: false
+        default: 'info'
+        type: choice
+        options:
+          - info
+          - debug
+          - warn
 
 jobs:
   build-and-test:
@@ -36,3 +50,6 @@ jobs:
           name: app-build       # Name of the artifact
           path: dist/            # Folder to upload
           retention-days: 7      # Keep for 7 days
+
+      - name: Show log level
+        run: echo "Log level is ${{ inputs.log_level || 'not set' }}"
